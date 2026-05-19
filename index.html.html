@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Culture Hub</title>
+<title>Command Center</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -15,7 +16,6 @@
   --amber:#d97706;--amber-bg:#fffbeb;--amber-text:#92400e;
   --red:#dc2626;--red-bg:#fef2f2;--red-text:#991b1b;
   --purple:#7c3aed;--purple-bg:#f5f3ff;--purple-text:#5b21b6;
-  --teal:#0d9488;--teal-bg:#f0fdfa;--teal-text:#0f766e;
   --radius:10px;--radius-sm:6px;
 }
 @media(prefers-color-scheme:dark){:root{
@@ -27,11 +27,22 @@
   --amber-bg:#451a03;--amber-text:#fcd34d;
   --red-bg:#450a0a;--red-text:#fca5a5;
   --purple-bg:#2e1065;--purple-text:#c4b5fd;
-  --teal-bg:#134e4a;--teal-text:#5eead4;
 }}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
 
-/* ── SIDEBAR ── */
+/* AUTH SCREEN */
+.auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:40px;width:380px;max-width:94vw;text-align:center;}
+.auth-logo{font-size:22px;font-weight:700;letter-spacing:-.02em;margin-bottom:6px;}
+.auth-sub{font-size:13px;color:var(--text2);margin-bottom:28px;}
+.auth-divider{font-size:11px;color:var(--text3);margin:16px 0;}
+.google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:11px 16px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;font-weight:500;cursor:pointer;transition:background .15s;}
+.google-btn:hover{background:var(--surface2);}
+.auth-note{font-size:11px;color:var(--text3);margin-top:16px;}
+.auth-error{font-size:12px;color:var(--red-text);background:var(--red-bg);padding:8px 12px;border-radius:var(--radius-sm);margin-top:12px;display:none;}
+
+/* APP */
+.app{display:none;}
 .sidebar{position:fixed;left:0;top:0;width:210px;height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:50;}
 .sidebar-logo{padding:20px 18px 14px;border-bottom:1px solid var(--border);}
 .logo-title{font-size:15px;font-weight:600;letter-spacing:-.01em;}
@@ -43,21 +54,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nav-btn.active{background:var(--surface2);color:var(--blue);font-weight:500;}
 .nav-btn svg{width:15px;height:15px;opacity:.6;flex-shrink:0;}
 .nav-btn.active svg{opacity:1;}
-.sidebar-foot{padding:14px 18px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);}
+.sidebar-foot{padding:14px 18px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);display:flex;align-items:center;justify-content:space-between;}
 .pulse{display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;margin-right:4px;}
-
-/* ── MAIN ── */
+.user-info{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;}
+.logout-btn{background:none;border:none;font-size:11px;color:var(--text3);cursor:pointer;padding:2px 6px;border-radius:4px;white-space:nowrap;}
+.logout-btn:hover{color:var(--red-text);background:var(--red-bg);}
 .main{margin-left:210px;padding:28px 32px;min-height:100vh;}
 .page{display:none;}
 .page.active{display:block;}
-
-/* ── TOPBAR ── */
 .topbar{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;gap:12px;flex-wrap:wrap;}
 .page-title{font-size:21px;font-weight:600;letter-spacing:-.01em;}
 .page-sub{font-size:12px;color:var(--text2);margin-top:3px;}
 .topbar-actions{display:flex;gap:8px;flex-wrap:wrap;}
-
-/* ── BUTTONS ── */
 .btn-primary{background:var(--blue);color:#fff;border:none;padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
 .btn-primary:hover{opacity:.88;}
 .btn-sec{background:var(--surface);color:var(--text);border:1px solid var(--border2);padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;white-space:nowrap;}
@@ -66,151 +74,90 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .btn-ghost:hover{color:var(--text);background:var(--surface2);}
 .btn-icon{background:none;border:1px solid var(--border2);color:var(--text2);font-size:12px;cursor:pointer;padding:4px 10px;border-radius:var(--radius-sm);transition:all .1s;white-space:nowrap;}
 .btn-icon:hover{background:var(--surface2);color:var(--text);}
-.btn-cal{background:none;border:1px solid var(--border2);color:var(--text2);font-size:11px;cursor:pointer;padding:3px 9px;border-radius:var(--radius-sm);display:inline-flex;align-items:center;gap:4px;transition:all .1s;text-decoration:none;white-space:nowrap;}
-.btn-cal:hover{background:var(--blue-bg);color:var(--blue-text);border-color:var(--blue);}
-
-/* ── BADGES ── */
 .badge{display:inline-flex;align-items:center;font-size:10px;font-weight:500;padding:2px 8px;border-radius:99px;white-space:nowrap;}
-.badge-blue{background:var(--blue-bg);color:var(--blue-text);}
 .badge-green{background:var(--green-bg);color:var(--green-text);}
 .badge-amber{background:var(--amber-bg);color:var(--amber-text);}
 .badge-red{background:var(--red-bg);color:var(--red-text);}
-.badge-purple{background:var(--purple-bg);color:var(--purple-text);}
+.badge-blue{background:var(--blue-bg);color:var(--blue-text);}
 .badge-gray{background:var(--surface2);color:var(--text2);}
-
-/* ── METRICS ── */
 .metrics-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:24px;}
 .metric-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;}
 .metric-label{font-size:11px;color:var(--text2);font-weight:500;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em;}
 .metric-value{font-size:28px;font-weight:600;line-height:1;}
-.metric-sub{font-size:11px;color:var(--text3);margin-top:5px;}
-
-/* ── HOME GRID ── */
-.home-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
-
-/* ── CARDS ── */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;}
 .card:last-child{margin-bottom:0;}
 .card-header{display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border-bottom:1px solid var(--border);}
 .card-title{font-size:14px;font-weight:600;}
-
-/* ── COORD QUICK GRID ── */
-.coord-quick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;padding:14px;}
-.coord-quick-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;cursor:pointer;transition:all .15s;}
-.coord-quick-card:hover{border-color:var(--blue);background:var(--blue-bg);}
-.cq-top{display:flex;align-items:center;gap:9px;margin-bottom:7px;}
-.cq-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;}
-.cq-name{font-size:13px;font-weight:600;}
-.cq-region{font-size:11px;color:var(--text3);}
-.cq-stats{display:flex;gap:8px;flex-wrap:wrap;}
-.cq-stat{font-size:11px;color:var(--text2);}
-.cq-stat span{font-weight:600;color:var(--text);}
-
-/* ── PAGE-LEVEL TABS (Managers / Coordinators) ── */
-.page-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px;}
-.page-tab{padding:10px 22px;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;}
-.page-tab:hover{color:var(--text);}
-.page-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
-
-/* ── PERSON TABS (per manager/coordinator) ── */
-.person-tab-strip{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:0;}
-.person-tab{display:flex;align-items:center;gap:9px;padding:9px 16px 9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all .15s;user-select:none;}
-.person-tab:hover{border-color:var(--border2);}
-.person-tab.active{border-color:var(--blue);background:var(--blue-bg);}
-.person-tab .tab-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;}
-.person-tab .tab-name{font-size:13px;font-weight:500;color:var(--text);}
-.person-tab .tab-sub{font-size:10px;color:var(--text3);}
-.person-tab.active .tab-name{color:var(--blue-text);}
-
-/* ── PANEL ── */
-.person-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-top:14px;overflow:hidden;}
-.panel-header{display:flex;align-items:center;gap:14px;padding:18px 22px;border-bottom:1px solid var(--border);background:var(--surface2);}
-.panel-av{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;flex-shrink:0;}
-.panel-name{font-size:19px;font-weight:600;}
-.panel-sub{font-size:12px;color:var(--text2);margin-top:2px;}
-.panel-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;}
-
-/* ── MANAGER PANEL COLS ── */
-.mgr-cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;}
-.panel-section{padding:18px 20px;border-right:1px solid var(--border);}
-.panel-section:last-child{border-right:none;}
-.sec-heading{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
-
-/* DIRECT REPORTS */
-.dr-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.dr-chip{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:8px;}
-.dr-chip:hover{border-color:var(--blue);background:var(--blue-bg);}
-.dr-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;}
-.dr-name{font-size:12px;font-weight:500;}
-.dr-region{font-size:10px;color:var(--text3);}
-
-/* CULTURE */
-.mood-row{display:flex;gap:6px;margin-bottom:10px;}
-.mood-btn{font-size:20px;padding:4px 8px;border-radius:6px;cursor:pointer;border:1.5px solid transparent;transition:all .1s;background:none;line-height:1;}
-.mood-btn:hover{background:var(--surface2);}
-.mood-btn.selected{border-color:var(--blue);background:var(--blue-bg);}
-
-/* EDITABLE FIELDS */
-.edit-field{font-size:12px;color:var(--text2);padding:7px 9px;background:var(--surface2);border-radius:var(--radius-sm);min-height:36px;cursor:text;line-height:1.6;border:1px solid transparent;transition:border .1s;width:100%;}
-.edit-field:focus{outline:none;border-color:var(--blue);}
-.edit-field-lg{font-size:13px;color:var(--text);padding:12px 14px;background:var(--surface2);border-radius:var(--radius-sm);min-height:90px;cursor:text;line-height:1.7;border:1px solid transparent;transition:border .1s;width:100%;}
-.edit-field-lg:focus{outline:none;border-color:var(--blue);}
-
-/* CI ENTRIES */
-.ci-entry{padding:10px 0;border-bottom:1px solid var(--border);}
-.ci-entry:last-child{border-bottom:none;}
-.ci-entry-top{display:flex;align-items:flex-start;gap:8px;}
-.ci-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px;}
-.ci-body{flex:1;}
-.ci-title{font-size:13px;font-weight:500;}
-.ci-date-label{font-size:11px;color:var(--text3);margin-top:1px;}
-.ci-actions{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap;}
-
-/* PROJ ENTRIES */
-.proj-entry{padding:10px 0;border-bottom:1px solid var(--border);}
-.proj-entry:last-child{border-bottom:none;}
-.proj-entry-top{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;}
-.proj-entry-name{font-size:13px;font-weight:500;flex:1;line-height:1.4;}
-.proj-actions{display:flex;gap:5px;margin-top:6px;}
-
-/* RUNNING NOTES */
-.running-notes-wrap{padding:18px 22px;border-top:1px solid var(--border);}
-
-/* REMINDERS */
-.reminders-layout{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;}
-.reminder-item{display:flex;align-items:flex-start;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border);transition:background .1s;}
-.reminder-item:last-child{border-bottom:none;}
-.reminder-item:hover{background:var(--surface2);}
-.rem-cb{width:17px;height:17px;border-radius:50%;border:1.5px solid var(--border2);flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
-.rem-cb.done{background:var(--green);border-color:var(--green);}
-.rem-cb.done::after{content:'';width:7px;height:5px;border-left:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:rotate(-45deg) translateY(-1px);display:block;}
-.rem-body{flex:1;min-width:0;}
-.rem-text{font-size:13px;line-height:1.4;}
-.rem-text.done{text-decoration:line-through;color:var(--text3);}
-.rem-meta{font-size:11px;color:var(--text3);margin-top:2px;}
-.rem-overdue{color:var(--red-text)!important;}
-
-/* CI LIST */
-.ci-list-item{display:flex;align-items:flex-start;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border);}
-.ci-list-item:last-child{border-bottom:none;}
-.ci-list-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:4px;}
-.ci-list-body{flex:1;}
-.ci-list-title{font-size:13px;font-weight:500;}
-.ci-list-meta{font-size:11px;color:var(--text3);margin-top:2px;}
-.ci-list-actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;}
-
-/* HOME ITEMS */
-.home-rem-item{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--border);}
-.home-rem-item:last-child{border-bottom:none;}
-.home-rem-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
-.home-rem-body{flex:1;min-width:0;}
-.home-rem-text{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.home-rem-meta{font-size:11px;color:var(--text3);margin-top:1px;}
-
-/* MODAL */
+.toolbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.search-input{flex:1;min-width:160px;padding:7px 12px;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-family:inherit;}
+.search-input:focus{outline:2px solid var(--blue);border-color:transparent;}
+.filter-select{padding:7px 10px;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer;}
+.filter-select:focus{outline:2px solid var(--blue);border-color:transparent;}
+.proj-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;}
+.proj-header{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;user-select:none;transition:background .1s;}
+.proj-header:hover{background:var(--surface2);}
+.proj-chevron{font-size:11px;color:var(--text3);transition:transform .2s;flex-shrink:0;}
+.proj-chevron.open{transform:rotate(90deg);}
+.proj-name{font-size:14px;font-weight:500;flex:1;}
+.proj-owners{font-size:11px;color:var(--text2);margin-top:2px;}
+.proj-body{display:none;padding:0 16px 14px;border-top:1px solid var(--border);}
+.proj-body.open{display:block;}
+.proj-desc{font-size:13px;color:var(--text2);line-height:1.6;margin-top:10px;}
+.proj-next{font-size:13px;color:var(--text);margin-top:8px;}
+.proj-next span{color:var(--text2);font-size:12px;}
+.wl-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;}
+.wl-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.wl-high .wl-dot{background:var(--red);}
+.wl-high{color:var(--red-text);}
+.wl-medium .wl-dot{background:var(--amber);}
+.wl-medium{color:var(--amber-text);}
+.wl-low .wl-dot{background:var(--green);}
+.wl-low{color:var(--green-text);}
+.update-section{margin-top:12px;}
+.update-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+.update-row{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);}
+.update-row:last-of-type{border-bottom:none;}
+.update-ts{font-size:11px;color:var(--text3);white-space:nowrap;min-width:130px;margin-top:1px;}
+.update-text{font-size:13px;color:var(--text);line-height:1.5;flex:1;}
+.update-author{font-size:11px;color:var(--blue-text);white-space:nowrap;}
+.update-delete{background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0 4px;line-height:1;opacity:0;}
+.update-row:hover .update-delete{opacity:1;}
+.add-update-row{display:flex;gap:8px;margin-top:8px;}
+.add-update-input{flex:1;padding:6px 10px;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text);font-family:inherit;}
+.add-update-input:focus{outline:2px solid var(--blue);border-color:transparent;}
+.add-update-btn{padding:6px 12px;font-size:12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text2);cursor:pointer;white-space:nowrap;}
+.add-update-btn:hover{background:var(--surface2);color:var(--text);}
+.team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:4px;}
+.team-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;}
+.tc-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;margin-bottom:10px;}
+.tc-proj-link{font-size:12px;color:var(--text2);padding:2px 0;cursor:pointer;display:block;}
+.tc-proj-link:hover{color:var(--blue);}
+.week-section{margin-bottom:24px;}
+.week-heading{font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.weekly-entry{display:flex;align-items:flex-start;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);}
+.weekly-entry:last-child{border-bottom:none;}
+.we-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;}
+.we-body{flex:1;}
+.we-name{font-size:12px;font-weight:600;margin-bottom:2px;}
+.we-text{font-size:13px;color:var(--text);line-height:1.5;}
+.we-ts{font-size:11px;color:var(--text3);margin-top:2px;}
+.we-project{font-size:11px;color:var(--blue-text);margin-top:2px;}
+.oneon-item{display:flex;align-items:flex-start;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border);}
+.oneon-item:last-child{border-bottom:none;}
+.oneon-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.oneon-body{flex:1;}
+.oneon-title{font-size:13px;font-weight:500;}
+.oneon-meta{font-size:11px;color:var(--text3);margin-top:2px;}
+.oneon-notes{font-size:12px;color:var(--text2);margin-top:5px;line-height:1.5;}
+.oneon-actions{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap;}
+.home-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.home-proj-row{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;}
+.home-proj-row:last-child{border-bottom:none;}
+.home-proj-row:hover{background:var(--surface2);}
+.home-proj-name{font-size:13px;font-weight:500;flex:1;}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;}
 .modal-overlay.open{display:flex;}
-.modal{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:24px;width:430px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.modal{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:24px;width:460px;max-width:96vw;max-height:92vh;overflow-y:auto;}
 .modal-title{font-size:16px;font-weight:600;margin-bottom:16px;}
 .form-group{margin-bottom:12px;}
 .form-label{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:4px;display:block;}
@@ -218,57 +165,69 @@ input[type=text],input[type=date],select,textarea{width:100%;padding:8px 11px;fo
 input:focus,select:focus,textarea:focus{outline:2px solid var(--blue);border-color:transparent;}
 textarea{min-height:70px;resize:vertical;}
 .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
-
-/* SETTINGS */
 .settings-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;}
 .settings-row{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);}
 .settings-row:last-child{border-bottom:none;}
 .settings-label{font-size:13px;font-weight:500;}
 .settings-sub{font-size:11px;color:var(--text3);margin-top:2px;}
 .empty-state{padding:28px 18px;text-align:center;color:var(--text3);font-size:13px;}
-
-.search-input{flex:1;min-width:160px;max-width:260px;padding:7px 12px;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-family:inherit;}
-.search-input:focus{outline:2px solid var(--blue);border-color:transparent;}
-
+.loading{padding:40px;text-align:center;color:var(--text3);font-size:13px;}
 @media(max-width:820px){
   .sidebar{width:54px;}
-  .logo-title,.logo-sub,.nav-label,.nav-btn span,.sidebar-foot span:not(.pulse){display:none;}
+  .logo-title,.logo-sub,.nav-label,.nav-btn span,.user-info,.logout-btn{display:none;}
   .nav-btn{justify-content:center;padding:10px;}
   .main{margin-left:54px;padding:16px 12px;}
   .metrics-grid{grid-template-columns:1fr 1fr;}
-  .home-grid,.reminders-layout{grid-template-columns:1fr;}
-  .mgr-cols,.coord-panel-cols{grid-template-columns:1fr;}
-  .panel-section{border-right:none;border-bottom:1px solid var(--border);}
-  .dr-grid{grid-template-columns:1fr;}
+  .home-grid{grid-template-columns:1fr;}
 }
 </style>
 </head>
 <body>
 
+<!-- AUTH SCREEN -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">Command Center</div>
+    <div class="auth-sub">SidelineSwap Trade-In Team</div>
+    <button class="google-btn" onclick="signInWithGoogle()">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z"/></svg>
+      Continue with Google
+    </button>
+    <div class="auth-note">Only @sidelineswap.com accounts can sign in</div>
+    <div class="auth-error" id="auth-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app">
 <div class="sidebar">
   <div class="sidebar-logo">
-    <div class="logo-title">Culture Hub</div>
-    <div class="logo-sub" id="logo-sub">Senior Analyst · Trade Events</div>
+    <div class="logo-title">Command Center</div>
+    <div class="logo-sub">Trade-In Team</div>
   </div>
   <nav class="nav">
-    <div class="nav-label">Overview</div>
-    <button class="nav-btn active" onclick="showPage('home',this)">
+    <div class="nav-label">Projects</div>
+    <button class="nav-btn active" onclick="showPage('projects',this)">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
-      <span>Home</span>
+      <span>All projects</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('home',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6.5L8 2l6 4.5V14a1 1 0 01-1 1H3a1 1 0 01-1-1V6.5z"/></svg>
+      <span>Dashboard</span>
     </button>
     <div class="nav-label">Team</div>
     <button class="nav-btn" onclick="showPage('team',this)">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="5" r="2.5"/><path d="M1 13c0-2.76 2.24-5 5-5s5 2.24 5 5"/><circle cx="12" cy="5" r="2"/><path d="M15 13c0-1.66-1.34-3-3-3"/></svg>
       <span>Team</span>
     </button>
-    <div class="nav-label">My Work</div>
-    <button class="nav-btn" onclick="showPage('reminders',this)">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8l2.5 2.5L13 4"/><circle cx="8" cy="8" r="7"/></svg>
-      <span>My Reminders</span>
+    <button class="nav-btn" onclick="showPage('weekly',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="11" rx="1"/><path d="M5 1v4M11 1v4M1 7h14"/></svg>
+      <span>Weekly updates</span>
     </button>
-    <button class="nav-btn" onclick="showPage('checkins',this)">
+    <div class="nav-label">Manage</div>
+    <button class="nav-btn" onclick="showPage('oneones',this)">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1v4l3 1.5"/><circle cx="8" cy="8" r="7"/></svg>
-      <span>Check-ins</span>
+      <span>1-on-1s</span>
     </button>
     <div class="nav-label">System</div>
     <button class="nav-btn" onclick="showPage('settings',this)">
@@ -276,750 +235,488 @@ textarea{min-height:70px;resize:vertical;}
       <span>Settings</span>
     </button>
   </nav>
-  <div class="sidebar-foot"><span class="pulse"></span><span id="footer-date"></span></div>
+  <div class="sidebar-foot">
+    <span><span class="pulse"></span><span id="footer-date"></span></span>
+    <button class="logout-btn" onclick="signOut()">Sign out</button>
+  </div>
 </div>
 
 <main class="main">
 
-<!-- HOME -->
-<div class="page active" id="page-home">
+<div class="page active" id="page-projects">
   <div class="topbar">
-    <div>
-      <div class="page-title" id="home-greeting">Good morning 👋</div>
-      <div class="page-sub" id="home-date"></div>
-    </div>
-    <div class="topbar-actions">
-      <button class="btn-sec" onclick="openModal('modal-checkin')">+ Check-in</button>
-      <button class="btn-primary" onclick="openModal('modal-reminder')">+ Reminder</button>
-    </div>
+    <div><div class="page-title">Projects</div><div class="page-sub">All active trade-in team initiatives</div></div>
+    <div class="topbar-actions"><button class="btn-primary" onclick="openModal('modal-addproject')">+ Add project</button></div>
   </div>
-  <div class="metrics-grid" id="metrics-grid"></div>
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-header">
-      <span class="card-title">Coordinators</span>
-      <button class="btn-ghost" onclick="showPage('team',document.querySelectorAll('.nav-btn')[1]);setTeamTab('coordinators')">Manage →</button>
-    </div>
-    <div class="coord-quick-grid" id="home-coord-grid"></div>
+  <div class="metrics-grid" id="proj-metrics"></div>
+  <div class="toolbar">
+    <input class="search-input" type="text" placeholder="Search projects or owners..." oninput="renderProjects()" id="proj-search">
+    <select class="filter-select" id="proj-filter-stage" onchange="renderProjects()">
+      <option value="">All stages</option>
+      <option value="active">Active</option>
+      <option value="prep">In prep</option>
+      <option value="pending">Pending</option>
+      <option value="waitlist">Waitlist</option>
+    </select>
+    <select class="filter-select" id="proj-filter-workload" onchange="renderProjects()">
+      <option value="">All workloads</option>
+      <option value="high">High</option>
+      <option value="medium">Medium</option>
+      <option value="low">Low</option>
+    </select>
+    <select class="filter-select" id="proj-filter-owner" onchange="renderProjects()"></select>
   </div>
+  <div id="proj-list"><div class="loading">Loading projects...</div></div>
+</div>
+
+<div class="page" id="page-home">
+  <div class="topbar">
+    <div><div class="page-title" id="home-greeting">Good morning 👋</div><div class="page-sub" id="home-date"></div></div>
+    <div class="topbar-actions"><button class="btn-primary" onclick="openModal('modal-addproject')">+ Add project</button></div>
+  </div>
+  <div class="metrics-grid" id="home-metrics"></div>
   <div class="home-grid">
     <div class="card">
-      <div class="card-header">
-        <span class="card-title">My reminders</span>
-        <button class="btn-ghost" onclick="showPage('reminders',document.querySelectorAll('.nav-btn')[2])">View all →</button>
-      </div>
-      <div id="home-reminders"></div>
+      <div class="card-header"><span class="card-title">High workload projects</span><button class="btn-ghost" onclick="filterAndGo('workload','high')">View all →</button></div>
+      <div id="home-high-projects"></div>
     </div>
     <div class="card">
-      <div class="card-header">
-        <span class="card-title">Upcoming check-ins</span>
-        <button class="btn-ghost" onclick="showPage('checkins',document.querySelectorAll('.nav-btn')[3])">View all →</button>
-      </div>
-      <div id="home-checkins"></div>
+      <div class="card-header"><span class="card-title">Needs attention</span></div>
+      <div id="home-attention"></div>
     </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">All projects at a glance</span><button class="btn-ghost" onclick="showPage('projects',document.querySelectorAll('.nav-btn')[0])">Full view →</button></div>
+    <div id="home-all-projects"></div>
   </div>
 </div>
 
-<!-- TEAM (Managers + Coordinators) -->
 <div class="page" id="page-team">
-  <div class="topbar">
-    <div><div class="page-title">Team</div><div class="page-sub" id="team-page-sub">Managers and coordinators</div></div>
-    <div class="topbar-actions" id="team-topbar-actions"></div>
-  </div>
-  <div class="page-tabs">
-    <button class="page-tab" id="ptab-managers" onclick="setTeamTab('managers')">Managers</button>
-    <button class="page-tab active" id="ptab-coordinators" onclick="setTeamTab('coordinators')">Coordinators</button>
-  </div>
-
-  <!-- MANAGERS SUB-PAGE -->
-  <div id="team-managers" style="display:none">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-      <input class="search-input" type="text" placeholder="Search managers..." oninput="searchManagers(this.value)">
-    </div>
-    <div class="person-tab-strip" id="mgr-tabs"></div>
-    <div id="mgr-panel-area"></div>
-  </div>
-
-  <!-- COORDINATORS SUB-PAGE -->
-  <div id="team-coordinators" style="display:block">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-      <input class="search-input" type="text" placeholder="Search coordinators or markets..." oninput="searchCoords(this.value)">
-    </div>
-    <div class="person-tab-strip" id="coord-tabs"></div>
-    <div id="coord-panel-area"></div>
-  </div>
+  <div class="topbar"><div><div class="page-title">Team</div><div class="page-sub">Project ownership by team member</div></div></div>
+  <div id="team-grid-container"></div>
 </div>
 
-<!-- MY REMINDERS -->
-<div class="page" id="page-reminders">
+<div class="page" id="page-weekly">
   <div class="topbar">
-    <div><div class="page-title">My reminders</div><div class="page-sub">Your personal to-do and follow-up list</div></div>
-    <button class="btn-primary" onclick="openModal('modal-reminder')">+ Add reminder</button>
+    <div><div class="page-title">Weekly updates</div><div class="page-sub">Running log of project progress by team member</div></div>
+    <button class="btn-primary" onclick="openModal('modal-weekly')">+ Add update</button>
   </div>
-  <div class="reminders-layout">
-    <div class="card"><div class="card-header"><span class="card-title">Open</span></div><div id="reminders-open"></div></div>
-    <div class="card"><div class="card-header"><span class="card-title">Completed</span></div><div id="reminders-done"></div></div>
-  </div>
+  <div id="weekly-list"><div class="loading">Loading updates...</div></div>
 </div>
 
-<!-- CHECK-INS -->
-<div class="page" id="page-checkins">
+<div class="page" id="page-oneones">
   <div class="topbar">
-    <div><div class="page-title">Check-ins</div><div class="page-sub">1-on-1s, culture checks, and follow-ups</div></div>
-    <button class="btn-primary" onclick="openModal('modal-checkin')">+ Add check-in</button>
+    <div><div class="page-title">1-on-1s</div><div class="page-sub">Scheduled and completed check-ins</div></div>
+    <button class="btn-primary" onclick="openModal('modal-oneon')">+ Add 1-on-1</button>
   </div>
   <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:16px">
-    <div class="card"><div class="card-header"><span class="card-title">Upcoming</span></div><div id="checkins-upcoming"></div></div>
-    <div class="card"><div class="card-header"><span class="card-title">Completed</span></div><div id="checkins-done"></div></div>
+    <div class="card"><div class="card-header"><span class="card-title">Upcoming</span></div><div id="oneones-upcoming"></div></div>
+    <div class="card"><div class="card-header"><span class="card-title">Completed</span></div><div id="oneones-done"></div></div>
   </div>
 </div>
 
-<!-- SETTINGS -->
 <div class="page" id="page-settings">
   <div class="topbar"><div><div class="page-title">Settings</div></div></div>
   <div class="settings-card">
-    <div class="card-header"><span class="card-title">Your info</span></div>
-    <div class="settings-row"><div><div class="settings-label">Name</div></div><input type="text" id="s-name" style="width:200px" placeholder="Your name"></div>
-    <div class="settings-row"><div><div class="settings-label">Role</div></div><input type="text" id="s-role" style="width:200px" placeholder="Senior Analyst"></div>
-    <div class="settings-row"><div></div><button class="btn-primary" onclick="saveSettings()">Save changes</button></div>
-  </div>
-  <div class="settings-card">
-    <div class="card-header"><span class="card-title">Data</span></div>
-    <div class="settings-row">
-      <div><div class="settings-label">Reset all data</div><div class="settings-sub">Wipes everything and restores defaults</div></div>
-      <button class="btn-sec" style="border-color:var(--red-text);color:var(--red-text)" onclick="if(confirm('Reset all data?')){resetData();}">Reset</button>
-    </div>
+    <div class="card-header"><span class="card-title">Account</span></div>
+    <div class="settings-row"><div><div class="settings-label">Signed in as</div><div class="settings-sub" id="settings-email"></div></div><button class="btn-sec" onclick="signOut()">Sign out</button></div>
   </div>
 </div>
 
 </main>
+</div>
 
 <!-- MODALS -->
-<div class="modal-overlay" id="modal-reminder">
-  <div class="modal">
-    <div class="modal-title">Add reminder</div>
-    <div class="form-group"><label class="form-label">What do you need to do?</label><input type="text" id="rem-text" placeholder="e.g. Follow up with Allen on pipeline"></div>
-    <div class="form-group"><label class="form-label">Due date</label><input type="date" id="rem-due"></div>
-    <div class="form-group"><label class="form-label">Category</label>
-      <select id="rem-cat"><option>Follow-up</option><option>Internal</option><option>Coordinator</option><option>Manager</option><option>Leadership</option><option>Process</option><option>Other</option></select>
-    </div>
-    <div class="modal-actions"><button class="btn-sec" onclick="closeModal('modal-reminder')">Cancel</button><button class="btn-primary" onclick="addReminder()">Add</button></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="modal-checkin">
-  <div class="modal">
-    <div class="modal-title">Add check-in</div>
-    <div class="form-group"><label class="form-label">Who is this with?</label><select id="ci-who"></select></div>
-    <div class="form-group"><label class="form-label">Type</label>
-      <select id="ci-type"><option>1-on-1</option><option>Culture check</option><option>Follow-up</option><option>Growth convo</option><option>Team meeting</option></select>
-    </div>
-    <div class="form-group"><label class="form-label">Date</label><input type="date" id="ci-date"></div>
-    <div class="form-group"><label class="form-label">Notes</label><textarea id="ci-notes" placeholder="Topics, action items, observations..."></textarea></div>
-    <div class="modal-actions"><button class="btn-sec" onclick="closeModal('modal-checkin')">Cancel</button><button class="btn-primary" onclick="addCheckin()">Add check-in</button></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="modal-proj">
+<div class="modal-overlay" id="modal-addproject">
   <div class="modal">
     <div class="modal-title" id="modal-proj-title">Add project</div>
-    <div class="form-group"><label class="form-label">Project name</label><input type="text" id="pr-name"></div>
+    <div class="form-group"><label class="form-label">Project name</label><input type="text" id="np-name" placeholder="e.g. College Pipeline"></div>
+    <div class="form-group"><label class="form-label">Owners (comma separated)</label><input type="text" id="np-owners" placeholder="e.g. Brian, Pat"></div>
     <div class="form-group"><label class="form-label">Stage</label>
-      <select id="pr-stage"><option>Prepped</option><option>Staging</option><option>Deployed</option><option>In Review</option><option>Paused</option></select>
+      <select id="np-stage"><option value="active">Active</option><option value="prep">In prep</option><option value="pending">Pending</option><option value="waitlist">Waitlist</option></select>
     </div>
-    <div class="form-group"><label class="form-label">Notes / context</label><textarea id="pr-notes" placeholder="Links, details, updates..."></textarea></div>
-    <input type="hidden" id="pr-entity-type">
-    <input type="hidden" id="pr-entity-id">
-    <input type="hidden" id="pr-edit-id">
-    <div class="modal-actions"><button class="btn-sec" onclick="closeModal('modal-proj')">Cancel</button><button class="btn-primary" onclick="saveProject()">Save</button></div>
+    <div class="form-group"><label class="form-label">Workload</label>
+      <select id="np-workload"><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+    </div>
+    <div class="form-group"><label class="form-label">Description</label><textarea id="np-desc" placeholder="What is this project about?"></textarea></div>
+    <div class="form-group"><label class="form-label">Next action</label><input type="text" id="np-next" placeholder="What needs to happen next?"></div>
+    <input type="hidden" id="np-edit-id">
+    <div class="modal-actions"><button class="btn-sec" onclick="closeModal('modal-addproject')">Cancel</button><button class="btn-primary" onclick="saveProject()">Save</button></div>
   </div>
 </div>
 
-<div class="modal-overlay" id="modal-addcoord">
+<div class="modal-overlay" id="modal-weekly">
   <div class="modal">
-    <div class="modal-title">Add coordinator</div>
-    <div class="form-group"><label class="form-label">Name</label><input type="text" id="nc-name" placeholder="e.g. Jordan"></div>
-    <div class="form-group"><label class="form-label">Market / Region</label><input type="text" id="nc-region" placeholder="e.g. Phoenix"></div>
-    <div class="modal-actions"><button class="btn-sec" onclick="closeModal('modal-addcoord')">Cancel</button><button class="btn-primary" onclick="addCoord()">Add</button></div>
+    <div class="modal-title">Add weekly update</div>
+    <div class="form-group"><label class="form-label">Your name</label><input type="text" id="wu-name" placeholder="e.g. Parker"></div>
+    <div class="form-group"><label class="form-label">Related project</label><select id="wu-project"></select></div>
+    <div class="form-group"><label class="form-label">Update</label><textarea id="wu-text" placeholder="What moved this week?"></textarea></div>
+    <div class="modal-actions"><button class="btn-sec" onclick="closeModal('modal-weekly')">Cancel</button><button class="btn-primary" onclick="addWeeklyUpdate()">Add update</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-oneon">
+  <div class="modal">
+    <div class="modal-title">Add 1-on-1</div>
+    <div class="form-group"><label class="form-label">Who is this with?</label><input type="text" id="oo-who" placeholder="e.g. Pat"></div>
+    <div class="form-group"><label class="form-label">Type</label>
+      <select id="oo-type"><option>1-on-1</option><option>Culture check</option><option>Follow-up</option><option>Growth convo</option><option>Team meeting</option></select>
+    </div>
+    <div class="form-group"><label class="form-label">Date</label><input type="date" id="oo-date"></div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea id="oo-notes" placeholder="Topics, action items, observations..."></textarea></div>
+    <div class="modal-actions"><button class="btn-sec" onclick="closeModal('modal-oneon')">Cancel</button><button class="btn-primary" onclick="addOneon()">Add</button></div>
   </div>
 </div>
 
 <script>
-// ── PALETTE ──
+const SUPABASE_URL = 'https://xgeonztuwinkimaolcuz.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhnZW9uenR1d2lua2ltYW9sY3V6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxNjUxNzksImV4cCI6MjA5NDc0MTE3OX0.0UAAwbaKiObJvtOkZ0HKOG5VgosFFX2JzOy23OuK36U';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
 const PAL=[
   {bg:'#eff6ff',fg:'#1d4ed8'},{bg:'#f5f3ff',fg:'#5b21b6'},{bg:'#ecfdf5',fg:'#047857'},
   {bg:'#fffbeb',fg:'#92400e'},{bg:'#f0fdfa',fg:'#0f766e'},{bg:'#fef2f2',fg:'#991b1b'},
   {bg:'#fff7ed',fg:'#c2410c'},{bg:'#fdf4ff',fg:'#7e22ce'},{bg:'#f0fdf4',fg:'#15803d'},
   {bg:'#fff1f2',fg:'#be123c'},{bg:'#fefce8',fg:'#a16207'},{bg:'#f0f9ff',fg:'#0369a1'},
-  {bg:'#fdf2f8',fg:'#9d174d'},{bg:'#f7fee7',fg:'#3f6212'},
 ];
-const avS=i=>{const c=PAL[i%PAL.length];return `style="background:${c.bg};color:${c.fg}"`;};
-const ini=n=>n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+const palIdx=n=>{let h=0;for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))%PAL.length;return h;};
+const ini=n=>n.trim().split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
 
-// ── DEFAULT STATE ──
-const DEFAULT={
-  userName:'You', userRole:'Senior Analyst · Trade Events',
-  managers:[
-    {id:'m1',name:'Pat',role:'Assistant Manager',ci:12,cultureMood:'',cultureNote:'',notes:'',
-      directReports:['Allen','Andrew','Soph','Max','Lily','Boris'],
-      checkins:[],projects:[]},
-    {id:'m2',name:'Parker',role:'Assistant Manager',ci:13,cultureMood:'',cultureNote:'',notes:'',
-      directReports:['Owen','Chris','Brett','Tyler','Evan','Justin'],
-      checkins:[],projects:[]},
-  ],
-  coords:[
-    {id:'c1', name:'Allen',  region:'New Jersey',  ci:0,  cultureMood:'',cultureNote:'',notes:'',projects:[{id:101,name:'College Pipeline',stage:'Deployed',notes:''}],checkins:[]},
-    {id:'c2', name:'Owen',   region:'Boston',      ci:1,  cultureMood:'',cultureNote:'',notes:'',projects:[{id:102,name:'PIAS Wholesale',stage:'Deployed',notes:''}],checkins:[]},
-    {id:'c3', name:'Tyler',  region:'So Cal',      ci:2,  cultureMood:'',cultureNote:'',notes:'',projects:[],checkins:[]},
-    {id:'c4', name:'Soph',   region:'Philly',      ci:3,  cultureMood:'',cultureNote:'',notes:'',projects:[],checkins:[]},
-    {id:'c5', name:'Andrew', region:'Long Island', ci:4,  cultureMood:'',cultureNote:'',notes:'',projects:[{id:103,name:'College Pipeline',stage:'Deployed',notes:''}],checkins:[]},
-    {id:'c6', name:'Chris',  region:'Baltimore',   ci:5,  cultureMood:'',cultureNote:'',notes:'',projects:[],checkins:[]},
-    {id:'c7', name:'Justin', region:'Detroit',     ci:6,  cultureMood:'',cultureNote:'',notes:'',projects:[],checkins:[]},
-    {id:'c8', name:'Lily',   region:'Houston',     ci:7,  cultureMood:'',cultureNote:'',notes:'',projects:[{id:104,name:'Content Warehouse Posting (IG & Facebook)',stage:'Prepped',notes:''}],checkins:[]},
-    {id:'c9', name:'Boris',  region:'Chicago',     ci:8,  cultureMood:'',cultureNote:'',notes:'',projects:[{id:105,name:'Warehouse Listing Drip Process',stage:'Prepped',notes:''}],checkins:[]},
-    {id:'c10',name:'Max',    region:'Denver',      ci:9,  cultureMood:'',cultureNote:'',notes:'',projects:[],checkins:[]},
-    {id:'c11',name:'Evan',   region:'Toronto',     ci:10, cultureMood:'',cultureNote:'',notes:'',projects:[],checkins:[]},
-    {id:'c12',name:'Brett',  region:'Toronto',     ci:11, cultureMood:'',cultureNote:'',notes:'',projects:[{id:106,name:'Marketing Simplification (Outreach OS)',stage:'Staging',notes:''}],checkins:[]},
-  ],
-  reminders:[
-    {id:1,text:'Review Tyler Q2 event analytics',due:'2026-03-22',cat:'Follow-up',done:false},
-    {id:2,text:'Send process update doc to team',due:'2026-03-24',cat:'Process',done:false},
-    {id:3,text:'Pull Q1 trade-in numbers for leadership',due:'2026-03-26',cat:'Leadership',done:false},
-  ],
-  checkins:[
-    {id:1,who:'Tyler',type:'1-on-1',date:'2026-03-21',notes:'Workload check.',done:false},
-    {id:2,who:'Pat',type:'1-on-1',date:'2026-03-22',notes:'Weekly sync.',done:false},
-    {id:3,who:'Lily',type:'Growth convo',date:'2026-03-24',notes:'Data track interest.',done:false},
-  ],
-};
+let currentUser = null;
+let projects = [];
+let updates = {};
+let weeklyUpdates = [];
+let oneones = JSON.parse(localStorage.getItem('cmd_oneones')||'[]');
+let openProjects = new Set();
 
-let state=JSON.parse(JSON.stringify(DEFAULT));
-let activeMgrId='m1', activeCoordId='c1';
-let mgrSearch='', coordSearch='';
-let activeTeamTab='coordinators';
+// ── AUTH ──
+async function signInWithGoogle() {
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.href,
+      queryParams: { hd: 'sidelineswap.com' }
+    }
+  });
+  if (error) showAuthError(error.message);
+}
 
-function save(){try{localStorage.setItem('culture_hub_v5',JSON.stringify(state));}catch(e){}}
-function load(){try{const s=localStorage.getItem('culture_hub_v5');if(s)state=JSON.parse(s);}catch(e){}}
-function resetData(){state=JSON.parse(JSON.stringify(DEFAULT));save();renderAll();}
+async function signOut() {
+  await sb.auth.signOut();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  currentUser = null;
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function showApp(user) {
+  currentUser = user;
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  const email = user.email || '';
+  document.getElementById('settings-email').textContent = email;
+  const now = new Date();
+  const h = now.getHours();
+  document.getElementById('home-greeting').textContent = (h<12?'Good morning 👋':h<17?'Good afternoon 👋':'Good evening 👋');
+  document.getElementById('home-date').textContent = now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  document.getElementById('footer-date').textContent = now.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  loadAll();
+}
+
+// ── DATA ──
+async function loadAll() {
+  await loadProjects();
+  await loadWeeklyUpdates();
+  renderDashboard();
+  renderTeam();
+  renderWeekly();
+  renderOneones();
+}
+
+async function loadProjects() {
+  const { data: projs, error } = await sb.from('projects').select('*').order('created_at', { ascending: true });
+  if (error) { console.error(error); return; }
+
+  const { data: upds } = await sb.from('project_updates').select('*').order('created_at', { ascending: false });
+
+  projects = projs || [];
+  updates = {};
+  (upds || []).forEach(u => {
+    if (!updates[u.project_id]) updates[u.project_id] = [];
+    updates[u.project_id].push(u);
+  });
+
+  populateOwnerFilter();
+  renderProjects();
+}
+
+async function loadWeeklyUpdates() {
+  const { data, error } = await sb.from('weekly_updates').select('*').order('created_at', { ascending: false });
+  if (!error) weeklyUpdates = data || [];
+  renderWeekly();
+}
 
 // ── HELPERS ──
+function stageBadge(s) {
+  const m={active:'badge-green',prep:'badge-amber',pending:'badge-red',waitlist:'badge-gray'};
+  const l={active:'Active',prep:'In prep',pending:'Pending',waitlist:'Waitlist'};
+  return '<span class="badge '+(m[s]||'badge-gray')+'">'+(l[s]||s)+'</span>';
+}
+function wlBadge(w) {
+  return '<span class="wl-badge wl-'+w+'"><span class="wl-dot"></span>'+w.charAt(0).toUpperCase()+w.slice(1)+'</span>';
+}
+function fmtTs(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' · '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
 function fmtShort(d){if(!d)return '';const dt=new Date(d+'T00:00:00');return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
-function fmtFull(d){if(!d)return '';const dt=new Date(d+'T00:00:00');return dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});}
 function isOverdue(d){if(!d)return false;return new Date(d+'T00:00:00')<new Date(new Date().toDateString());}
-function stageBadge(s){const m={Deployed:'badge-green',Staging:'badge-amber',Prepped:'badge-blue','In Review':'badge-purple',Paused:'badge-gray'};return `<span class="badge ${m[s]||'badge-gray'}">${s}</span>`;}
-function ciColor(d){if(!d)return '#6b7280';const t=new Date().toISOString().slice(0,10);return d<t?'var(--red)':d===t?'var(--amber)':'var(--blue)';}
-function greeting(){const h=new Date().getHours();return h<12?'Good morning 👋':h<17?'Good afternoon 👋':'Good evening 👋';}
-function gcalLink(who,type,date,notes){
-  const base='https://calendar.google.com/calendar/render?action=TEMPLATE';
-  const title=encodeURIComponent(`${type} — ${who}`);
-  const det=encodeURIComponent(notes||'');
-  let dates='';
-  if(date){const d=date.replace(/-/g,'');const nx=new Date(date+'T00:00:00');nx.setDate(nx.getDate()+1);const nd=nx.toISOString().slice(0,10).replace(/-/g,'');dates=`&dates=${d}/${nd}`;}
-  return `${base}&text=${title}${dates}&details=${det}`;
+
+function populateOwnerFilter() {
+  const sel = document.getElementById('proj-filter-owner');
+  const cur = sel.value;
+  const owners = new Set();
+  projects.forEach(p => (p.owners||[]).forEach(o => owners.add(o)));
+  sel.innerHTML = '<option value="">All owners</option>' + [...owners].sort().map(o=>'<option value="'+o+'">'+o+'</option>').join('');
+  if (cur) sel.value = cur;
 }
 
-function populateSelects(){
-  const all=['Me',...state.managers.map(m=>m.name),...state.coords.map(c=>c.name)];
-  const ciWho=document.getElementById('ci-who');
-  if(ciWho) ciWho.innerHTML=all.filter(n=>n!=='Me').map(n=>`<option>${n}</option>`).join('');
+// ── PROJECTS ──
+function renderProjects() {
+  const q = (document.getElementById('proj-search').value||'').toLowerCase();
+  const sf = document.getElementById('proj-filter-stage').value;
+  const wf = document.getElementById('proj-filter-workload').value;
+  const of = document.getElementById('proj-filter-owner').value;
+
+  const filtered = projects.filter(p => {
+    if (sf && p.stage !== sf) return false;
+    if (wf && p.workload !== wf) return false;
+    if (of && !(p.owners||[]).includes(of)) return false;
+    if (q && !p.name.toLowerCase().includes(q) && !(p.owners||[]).join(' ').toLowerCase().includes(q) && !(p.description||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  const container = document.getElementById('proj-list');
+  if (!filtered.length) { container.innerHTML = '<div class="empty-state">No projects match your filters.</div>'; return; }
+
+  container.innerHTML = filtered.map(p => {
+    const isOpen = openProjects.has(p.id);
+    const upds = updates[p.id] || [];
+    return '<div class="proj-card"><div class="proj-header" onclick="toggleProject('+p.id+')"><span class="proj-chevron '+(isOpen?'open':'')+'">&#9658;</span><div style="flex:1;min-width:0"><div class="proj-name">'+p.name+'</div><div class="proj-owners">'+((p.owners||[]).join(', '))+'</div></div>'+stageBadge(p.stage)+wlBadge(p.workload)+'<button class="btn-icon" onclick="event.stopPropagation();editProject('+p.id+')" style="font-size:11px">Edit</button></div>'
+    +'<div class="proj-body '+(isOpen?'open':'')+'" id="pbody-'+p.id+'"><p class="proj-desc">'+(p.description||'')+'</p><p class="proj-next"><span>Next action: </span>'+(p.next_action||'—')+'</p>'
+    +'<div class="update-section"><div class="update-label">Update log</div>'
+    +(upds.length ? upds.map(u=>'<div class="update-row"><span class="update-ts">'+fmtTs(u.created_at)+'</span><span class="update-author">'+u.author+'</span><span class="update-text">'+u.text+'</span><button class="update-delete" onclick="deleteUpdate('+u.id+','+p.id+')" title="Delete">&times;</button></div>').join('') : '<div class="empty-state" style="padding:10px 0;text-align:left">No updates yet.</div>')
+    +'<div class="add-update-row"><input class="add-update-input" id="upd-'+p.id+'" placeholder="Add an update..." onkeydown="if(event.key===\'Enter\')addUpdate('+p.id+')"><button class="add-update-btn" onclick="addUpdate('+p.id+')">+ Add</button></div>'
+    +'</div></div></div>';
+  }).join('');
+
+  const total = projects.length;
+  const active = projects.filter(p=>p.stage==='active').length;
+  const high = projects.filter(p=>p.workload==='high').length;
+  const pending = projects.filter(p=>p.stage==='pending').length;
+  document.getElementById('proj-metrics').innerHTML =
+    '<div class="metric-card"><div class="metric-label">Total projects</div><div class="metric-value">'+total+'</div></div>'
+    +'<div class="metric-card"><div class="metric-label">Active</div><div class="metric-value">'+active+'</div></div>'
+    +'<div class="metric-card"><div class="metric-label">High workload</div><div class="metric-value" style="color:var(--red)">'+high+'</div></div>'
+    +'<div class="metric-card"><div class="metric-label">Pending response</div><div class="metric-value" style="color:var(--amber)">'+pending+'</div></div>';
 }
 
-// ── TEAM TABS ──
-function setTeamTab(tab){
-  activeTeamTab=tab;
-  document.getElementById('team-managers').style.display=tab==='managers'?'block':'none';
-  document.getElementById('team-coordinators').style.display=tab==='coordinators'?'block':'none';
-  document.getElementById('ptab-managers').classList.toggle('active',tab==='managers');
-  document.getElementById('ptab-coordinators').classList.toggle('active',tab==='coordinators');
-  const actions=document.getElementById('team-topbar-actions');
-  const sub=document.getElementById('team-page-sub');
-  if(tab==='managers'){
-    actions.innerHTML=`<button class="btn-primary" onclick="openModal('modal-addcoord')">+ Add manager</button>`;
-    sub.textContent='Assistant managers and their direct reports';
+function toggleProject(id) { if(openProjects.has(id))openProjects.delete(id);else openProjects.add(id); renderProjects(); }
+
+async function addUpdate(projId) {
+  const input = document.getElementById('upd-'+projId);
+  const text = input.value.trim(); if (!text) return;
+  const author = currentUser ? (currentUser.user_metadata?.name || currentUser.email.split('@')[0]) : 'Unknown';
+  const { data, error } = await sb.from('project_updates').insert({ project_id: projId, author, text }).select().single();
+  if (error) { alert('Error saving update: ' + error.message); return; }
+  if (!updates[projId]) updates[projId] = [];
+  updates[projId].unshift(data);
+  input.value = '';
+  renderProjects();
+}
+
+async function deleteUpdate(updId, projId) {
+  await sb.from('project_updates').delete().eq('id', updId);
+  if (updates[projId]) updates[projId] = updates[projId].filter(u => u.id !== updId);
+  renderProjects();
+}
+
+function editProject(id) {
+  const p = projects.find(x => x.id === id); if (!p) return;
+  document.getElementById('modal-proj-title').textContent = 'Edit project';
+  document.getElementById('np-name').value = p.name;
+  document.getElementById('np-owners').value = (p.owners||[]).join(', ');
+  document.getElementById('np-stage').value = p.stage;
+  document.getElementById('np-workload').value = p.workload;
+  document.getElementById('np-desc').value = p.description||'';
+  document.getElementById('np-next').value = p.next_action||'';
+  document.getElementById('np-edit-id').value = id;
+  openModal('modal-addproject');
+}
+
+async function saveProject() {
+  const name = document.getElementById('np-name').value.trim(); if (!name) return;
+  const owners = document.getElementById('np-owners').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const stage = document.getElementById('np-stage').value;
+  const workload = document.getElementById('np-workload').value;
+  const description = document.getElementById('np-desc').value.trim();
+  const next_action = document.getElementById('np-next').value.trim();
+  const editId = document.getElementById('np-edit-id').value;
+
+  if (editId) {
+    const { error } = await sb.from('projects').update({ name, owners, stage, workload, description, next_action }).eq('id', editId);
+    if (error) { alert('Error: ' + error.message); return; }
   } else {
-    actions.innerHTML=`<button class="btn-primary" onclick="openModal('modal-addcoord')">+ Add coordinator</button>`;
-    sub.textContent='All regional coordinators';
+    const { error } = await sb.from('projects').insert({ name, owners, stage, workload, description, next_action });
+    if (error) { alert('Error: ' + error.message); return; }
   }
+  document.getElementById('np-edit-id').value = '';
+  document.getElementById('modal-proj-title').textContent = 'Add project';
+  closeModal('modal-addproject');
+  await loadProjects();
+  renderDashboard(); renderTeam();
 }
 
-// ── MANAGER TABS & PANEL ──
-function renderMgrTabs(){
-  const q=mgrSearch.toLowerCase();
-  const list=state.managers.filter(m=>!q||m.name.toLowerCase().includes(q));
-  document.getElementById('mgr-tabs').innerHTML=list.map(m=>`
-    <div class="person-tab ${m.id===activeMgrId?'active':''}" onclick="selectMgr('${m.id}')">
-      <div class="tab-av" ${avS(m.ci)}>${ini(m.name)}</div>
-      <div><div class="tab-name">${m.name}</div><div class="tab-sub">${m.role}</div></div>
-    </div>`).join('');
-}
-function selectMgr(id){activeMgrId=id;renderMgrTabs();renderMgrPanel();}
-function searchManagers(q){mgrSearch=q;renderMgrTabs();}
-
-function renderMgrPanel(){
-  const m=state.managers.find(x=>x.id===activeMgrId);
-  if(!m){document.getElementById('mgr-panel-area').innerHTML='';return;}
-
-  // Direct reports chips
-  const drHTML=m.directReports.length
-    ? `<div class="dr-grid">${m.directReports.map(name=>{
-        const c=state.coords.find(x=>x.name===name);
-        if(!c)return '';
-        return `<div class="dr-chip" onclick="goToCoord('${c.id}')">
-          <div class="dr-av" ${avS(c.ci)}>${ini(c.name)}</div>
-          <div><div class="dr-name">${c.name}</div><div class="dr-region">${c.region}</div></div>
-        </div>`;
-      }).join('')}</div>`
-    : '<div style="font-size:12px;color:var(--text3)">No direct reports assigned</div>';
-
-  // Check-ins
-  const ciHTML=(m.checkins&&m.checkins.length)
-    ? m.checkins.map(ci=>`
-        <div class="ci-entry">
-          <div class="ci-entry-top">
-            <div class="ci-dot" style="background:${ci.done?'var(--green)':ciColor(ci.date)}"></div>
-            <div class="ci-body">
-              <div class="ci-title">${ci.type} <span style="font-weight:400;color:var(--text2)">· ${fmtShort(ci.date)}</span></div>
-              <div class="edit-field" contenteditable="true" onblur="saveMgrCiNote('${m.id}',${ci.id},this.textContent)">${ci.notes||'Click to add notes...'}</div>
-              <div class="ci-actions">
-                ${!ci.done?`<button class="btn-icon" onclick="markMgrCiDone('${m.id}',${ci.id})">Mark done</button>`:'<span style="font-size:11px;color:var(--green)">✓ Done</span>'}
-                <a href="${gcalLink(m.name,ci.type,ci.date,ci.notes)}" target="_blank" class="btn-cal">
-                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1M1 7h14"/></svg>
-                  Add to GCal
-                </a>
-                <button class="btn-icon" style="color:var(--red-text)" onclick="deleteMgrCi('${m.id}',${ci.id})">Remove</button>
-              </div>
-            </div>
-          </div>
-        </div>`).join('')
-    : '<div style="font-size:12px;color:var(--text3);padding:4px 0">No check-ins yet</div>';
-
-  // Culture
-  const moods=['🔥','😊','😐','😤','😴'];
-  const moodHTML=moods.map(md=>`<button class="mood-btn ${m.cultureMood===md?'selected':''}" onclick="setMgrMood('${m.id}','${md}')">${md}</button>`).join('');
-
-  document.getElementById('mgr-panel-area').innerHTML=`
-  <div class="person-panel">
-    <div class="panel-header">
-      <div class="panel-av" ${avS(m.ci)}>${ini(m.name)}</div>
-      <div>
-        <div class="panel-name">${m.name}</div>
-        <div class="panel-sub">${m.role} · ${m.directReports.length} direct reports</div>
-      </div>
-      <div class="panel-actions">
-        <button class="btn-icon" onclick="openAddCiForPerson('${m.id}','manager')">+ Check-in</button>
-      </div>
-    </div>
-
-    <div class="mgr-cols">
-      <div class="panel-section">
-        <div class="sec-heading">Direct reports</div>
-        ${drHTML}
-        <div style="margin-top:10px">
-          <div class="sec-heading" style="margin-bottom:8px">Edit direct reports</div>
-          <div class="edit-field" contenteditable="true" onblur="saveMgrDR('${m.id}',this.textContent)" style="font-size:11px">${m.directReports.join(', ')}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:4px">Comma-separated names. Click a chip above to jump to their profile.</div>
-        </div>
-      </div>
-
-      <div class="panel-section">
-        <div class="sec-heading">Check-ins <button class="btn-icon" onclick="openAddCiForPerson('${m.id}','manager')">+ Add</button></div>
-        ${ciHTML}
-      </div>
-
-      <div class="panel-section">
-        <div class="sec-heading">Culture check</div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:6px">Current vibe</div>
-        <div class="mood-row">${moodHTML}</div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:6px;margin-top:10px">Culture notes</div>
-        <div class="edit-field" contenteditable="true" onblur="saveMgrCultureNote('${m.id}',this.textContent)">${m.cultureNote||'Observations on attitude, team fit, culture contribution...'}</div>
-      </div>
-    </div>
-
-    <div class="running-notes-wrap">
-      <div class="sec-heading" style="margin-bottom:8px">
-        1-on-1 running notes
-        <span style="font-size:11px;color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">auto-saves on click away</span>
-      </div>
-      <div class="edit-field-lg" contenteditable="true" onblur="saveMgrNotes('${m.id}',this.textContent)">${m.notes||'Running notes from 1-on-1s with '+m.name+'...'}</div>
-    </div>
-  </div>`;
+// ── DASHBOARD ──
+function renderDashboard() {
+  const total = projects.length;
+  const active = projects.filter(p=>p.stage==='active').length;
+  const high = projects.filter(p=>p.workload==='high').length;
+  const owners = new Set(projects.flatMap(p=>p.owners||[])).size;
+  document.getElementById('home-metrics').innerHTML =
+    '<div class="metric-card"><div class="metric-label">Total projects</div><div class="metric-value">'+total+'</div></div>'
+    +'<div class="metric-card"><div class="metric-label">Active</div><div class="metric-value">'+active+'</div></div>'
+    +'<div class="metric-card"><div class="metric-label">High workload</div><div class="metric-value" style="color:var(--red)">'+high+'</div></div>'
+    +'<div class="metric-card"><div class="metric-label">Team members</div><div class="metric-value">'+owners+'</div></div>';
+  const highProjs = projects.filter(p=>p.workload==='high');
+  document.getElementById('home-high-projects').innerHTML = highProjs.length ? highProjs.map(p=>'<div class="home-proj-row" onclick="goToProject('+p.id+')"><div style="flex:1"><div class="home-proj-name">'+p.name+'</div><div style="font-size:11px;color:var(--text3)">'+((p.owners||[]).join(', '))+'</div></div>'+stageBadge(p.stage)+'</div>').join('') : '<div class="empty-state">No high workload projects.</div>';
+  const attention = projects.filter(p=>p.stage==='pending'||p.stage==='waitlist');
+  document.getElementById('home-attention').innerHTML = attention.length ? attention.map(p=>'<div class="home-proj-row" onclick="goToProject('+p.id+')"><div style="flex:1"><div class="home-proj-name">'+p.name+'</div><div style="font-size:11px;color:var(--text3)">'+((p.owners||[]).join(', '))+'</div></div>'+stageBadge(p.stage)+'</div>').join('') : '<div class="empty-state">Nothing needs immediate attention.</div>';
+  document.getElementById('home-all-projects').innerHTML = projects.map(p=>'<div class="home-proj-row" onclick="goToProject('+p.id+')"><div style="flex:1"><div class="home-proj-name">'+p.name+'</div><div style="font-size:11px;color:var(--text3)">'+((p.owners||[]).join(', '))+'</div></div>'+stageBadge(p.stage)+wlBadge(p.workload)+'</div>').join('');
 }
 
-// ── COORDINATOR TABS & PANEL ──
-function renderCoordTabs(){
-  const q=coordSearch.toLowerCase();
-  const list=state.coords.filter(c=>!q||c.name.toLowerCase().includes(q)||c.region.toLowerCase().includes(q));
-  document.getElementById('coord-tabs').innerHTML=list.map(c=>`
-    <div class="person-tab ${c.id===activeCoordId?'active':''}" onclick="selectCoord('${c.id}')">
-      <div class="tab-av" ${avS(c.ci)}>${ini(c.name)}</div>
-      <div><div class="tab-name">${c.name}</div><div class="tab-sub">${c.region}</div></div>
-    </div>`).join('');
-}
-function selectCoord(id){activeCoordId=id;renderCoordTabs();renderCoordPanel();}
-function searchCoords(q){coordSearch=q;renderCoordTabs();}
-function goToCoord(id){
-  activeCoordId=id;
-  showPage('team',document.querySelectorAll('.nav-btn')[1]);
-  setTeamTab('coordinators');
-  renderCoordTabs();renderCoordPanel();
+function goToProject(id) {
+  openProjects.add(id);
+  showPage('projects', document.querySelectorAll('.nav-btn')[0]);
+  document.getElementById('proj-search').value='';
+  document.getElementById('proj-filter-stage').value='';
+  document.getElementById('proj-filter-workload').value='';
+  document.getElementById('proj-filter-owner').value='';
+  renderProjects();
+  setTimeout(()=>{const el=document.getElementById('pbody-'+id);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},100);
 }
 
-function renderCoordPanel(){
-  const c=state.coords.find(x=>x.id===activeCoordId);
-  if(!c){document.getElementById('coord-panel-area').innerHTML='';return;}
-
-  const projHTML=(c.projects&&c.projects.length)
-    ? c.projects.map(p=>`
-        <div class="proj-entry">
-          <div class="proj-entry-top">
-            <div class="proj-entry-name">${p.name}</div>
-            ${stageBadge(p.stage)}
-          </div>
-          <div class="edit-field" contenteditable="true" onblur="saveProjNote('coord','${c.id}',${p.id},this.textContent)">${p.notes||'Click to add notes...'}</div>
-          <div class="proj-actions">
-            <button class="btn-icon" onclick="openEditProj('coord','${c.id}',${p.id})">Edit</button>
-            <button class="btn-icon" style="color:var(--red-text)" onclick="deleteProj('coord','${c.id}',${p.id})">Remove</button>
-          </div>
-        </div>`).join('')
-    : '<div style="font-size:12px;color:var(--text3);padding:4px 0">No projects yet</div>';
-
-  const ciHTML=(c.checkins&&c.checkins.length)
-    ? c.checkins.map(ci=>`
-        <div class="ci-entry">
-          <div class="ci-entry-top">
-            <div class="ci-dot" style="background:${ci.done?'var(--green)':ciColor(ci.date)}"></div>
-            <div class="ci-body">
-              <div class="ci-title">${ci.type} <span style="font-weight:400;color:var(--text2)">· ${fmtShort(ci.date)}</span></div>
-              <div class="edit-field" contenteditable="true" onblur="saveCoordCiNote('${c.id}',${ci.id},this.textContent)">${ci.notes||'Click to add notes...'}</div>
-              <div class="ci-actions">
-                ${!ci.done?`<button class="btn-icon" onclick="markCoordCiDone('${c.id}',${ci.id})">Mark done</button>`:'<span style="font-size:11px;color:var(--green)">✓ Done</span>'}
-                <a href="${gcalLink(c.name,ci.type,ci.date,ci.notes)}" target="_blank" class="btn-cal">
-                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1M1 7h14"/></svg>Add to GCal
-                </a>
-                <button class="btn-icon" style="color:var(--red-text)" onclick="deleteCoordCi('${c.id}',${ci.id})">Remove</button>
-              </div>
-            </div>
-          </div>
-        </div>`).join('')
-    : '<div style="font-size:12px;color:var(--text3);padding:4px 0">No check-ins yet</div>';
-
-  const moods=['🔥','😊','😐','😤','😴'];
-  const moodHTML=moods.map(md=>`<button class="mood-btn ${c.cultureMood===md?'selected':''}" onclick="setCoordMood('${c.id}','${md}')">${md}</button>`).join('');
-
-  document.getElementById('coord-panel-area').innerHTML=`
-  <div class="person-panel">
-    <div class="panel-header">
-      <div class="panel-av" ${avS(c.ci)}>${ini(c.name)}</div>
-      <div><div class="panel-name">${c.name}</div><div class="panel-sub">${c.region}</div></div>
-      <div class="panel-actions">
-        <button class="btn-icon" onclick="openAddProj('coord','${c.id}')">+ Project</button>
-        <button class="btn-icon" onclick="openAddCiForPerson('${c.id}','coord')">+ Check-in</button>
-      </div>
-    </div>
-    <div class="mgr-cols">
-      <div class="panel-section">
-        <div class="sec-heading">Projects <button class="btn-icon" onclick="openAddProj('coord','${c.id}')">+ Add</button></div>
-        ${projHTML}
-      </div>
-      <div class="panel-section">
-        <div class="sec-heading">Check-ins <button class="btn-icon" onclick="openAddCiForPerson('${c.id}','coord')">+ Add</button></div>
-        ${ciHTML}
-      </div>
-      <div class="panel-section">
-        <div class="sec-heading">Culture check</div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:6px">Current vibe</div>
-        <div class="mood-row">${moodHTML}</div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:6px;margin-top:10px">Notes</div>
-        <div class="edit-field" contenteditable="true" onblur="saveCoordCultureNote('${c.id}',this.textContent)">${c.cultureNote||'Culture observations, attitude, team fit...'}</div>
-      </div>
-    </div>
-    <div class="running-notes-wrap">
-      <div class="sec-heading" style="margin-bottom:8px">
-        1-on-1 running notes
-        <span style="font-size:11px;color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">auto-saves on click away</span>
-      </div>
-      <div class="edit-field-lg" contenteditable="true" onblur="saveCoordNotes('${c.id}',this.textContent)">${c.notes||'Running notes from 1-on-1s with '+c.name+'...'}</div>
-    </div>
-  </div>`;
+function filterAndGo(type, val) {
+  showPage('projects', document.querySelectorAll('.nav-btn')[0]);
+  if (type==='workload') document.getElementById('proj-filter-workload').value = val;
+  renderProjects();
 }
 
-// ── HOME ──
-function renderMetrics(){
-  const openR=state.reminders.filter(r=>!r.done).length;
-  const overR=state.reminders.filter(r=>!r.done&&isOverdue(r.due)).length;
-  const allProj=state.coords.flatMap(c=>c.projects||[]);
-  const upCI=state.checkins.filter(c=>!c.done).length;
-  document.getElementById('metrics-grid').innerHTML=`
-    <div class="metric-card">
-      <div class="metric-label">Coordinators</div>
-      <div class="metric-value">${state.coords.length}</div>
-      <div class="metric-sub">${state.managers.length} managers</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-label">Total projects</div>
-      <div class="metric-value">${allProj.length}</div>
-      <div class="metric-sub">${allProj.filter(p=>p.stage==='Deployed').length} deployed</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-label">Check-ins pending</div>
-      <div class="metric-value">${upCI}</div>
-      <div class="metric-sub">${state.checkins.filter(c=>c.done).length} completed</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-label">My reminders</div>
-      <div class="metric-value">${openR}</div>
-      <div class="metric-sub">${overR>0?overR+' overdue':'All on track'}</div>
-    </div>`;
+// ── TEAM ──
+function renderTeam() {
+  const memberMap = {};
+  projects.forEach(p => { (p.owners||[]).forEach(o => { if(!memberMap[o])memberMap[o]={name:o,projects:[]}; memberMap[o].projects.push(p); }); });
+  const members = Object.values(memberMap).sort((a,b)=>b.projects.length-a.projects.length);
+  document.getElementById('team-grid-container').innerHTML = '<div class="team-grid">'+members.map(m=>{
+    const c = PAL[palIdx(m.name)];
+    return '<div class="team-card"><div class="tc-av" style="background:'+c.bg+';color:'+c.fg+'">'+ini(m.name)+'</div><div style="font-size:14px;font-weight:600">'+m.name+'</div><div style="font-size:11px;color:var(--text3);margin-top:2px">'+m.projects.length+' project'+(m.projects.length!==1?'s':'')+'</div><div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">'+m.projects.map(p=>stageBadge(p.stage)).join('')+'</div><div style="margin-top:8px">'+m.projects.map(p=>'<span class="tc-proj-link" onclick="goToProject('+p.id+')">&#8594; '+p.name+'</span>').join('')+'</div></div>';
+  }).join('')+'</div>';
 }
 
-function renderHomeCoordGrid(){
-  document.getElementById('home-coord-grid').innerHTML=state.coords.map(c=>{
-    const proj=(c.projects||[]).length;
-    const ci=(c.checkins||[]).filter(x=>!x.done).length;
-    return `<div class="coord-quick-card" onclick="goToCoord('${c.id}')">
-      <div class="cq-top">
-        <div class="cq-av" ${avS(c.ci)}>${ini(c.name)}</div>
-        <div><div class="cq-name">${c.name} ${c.cultureMood||''}</div><div class="cq-region">${c.region}</div></div>
-      </div>
-      <div class="cq-stats">
-        <div class="cq-stat"><span>${proj}</span> proj</div>
-        <div class="cq-stat" style="color:var(--text3)">·</div>
-        <div class="cq-stat"><span>${ci}</span> CI</div>
-      </div>
-    </div>`;
+// ── WEEKLY UPDATES ──
+function renderWeekly() {
+  if (!weeklyUpdates.length) { document.getElementById('weekly-list').innerHTML='<div class="empty-state" style="padding:40px">No updates yet. Add the first one!</div>'; return; }
+  const weeks = {};
+  weeklyUpdates.forEach(u => {
+    const d = new Date(u.created_at);
+    const monday = new Date(d); monday.setDate(d.getDate()-((d.getDay()+6)%7));
+    const key = monday.toISOString().slice(0,10);
+    if (!weeks[key]) weeks[key] = [];
+    weeks[key].push(u);
+  });
+  document.getElementById('weekly-list').innerHTML = Object.keys(weeks).sort((a,b)=>b.localeCompare(a)).map(week => {
+    const label = new Date(week+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+    return '<div class="week-section"><div class="week-heading">Week of '+label+'</div><div class="card" style="margin-bottom:0">'+weeks[week].map(u=>{
+      const uc = PAL[palIdx(u.name)];
+      return '<div class="weekly-entry"><div class="we-av" style="background:'+uc.bg+';color:'+uc.fg+'">'+ini(u.name)+'</div><div class="we-body"><div class="we-name">'+u.name+'</div><div class="we-text">'+u.text+'</div><div class="we-project">&#8594; '+u.project_name+'</div><div class="we-ts">'+fmtTs(u.created_at)+'</div></div><button class="btn-ghost" onclick="deleteWeekly('+u.id+')">&times;</button></div>';
+    }).join('')+'</div></div>';
   }).join('');
 }
 
-function renderHomeReminders(){
-  const items=state.reminders.filter(r=>!r.done).slice(0,5);
-  document.getElementById('home-reminders').innerHTML=items.length?items.map(r=>`
-    <div class="home-rem-item">
-      <div class="home-rem-dot" style="background:${isOverdue(r.due)?'var(--red)':'var(--blue)'}"></div>
-      <div class="home-rem-body">
-        <div class="home-rem-text">${r.text}</div>
-        <div class="home-rem-meta">${r.cat}${r.due?' · Due '+fmtShort(r.due):''}</div>
-      </div>
-      <div class="rem-cb" onclick="toggleReminder(${r.id})"></div>
-    </div>`).join(''):'<div class="empty-state">No open reminders 🎉</div>';
+async function addWeeklyUpdate() {
+  const name = document.getElementById('wu-name').value.trim(); if (!name) return;
+  const project_name = document.getElementById('wu-project').value;
+  const text = document.getElementById('wu-text').value.trim(); if (!text) return;
+  const { data, error } = await sb.from('weekly_updates').insert({ name, project_name, text }).select().single();
+  if (error) { alert('Error: ' + error.message); return; }
+  weeklyUpdates.unshift(data);
+  document.getElementById('wu-name').value=''; document.getElementById('wu-text').value='';
+  renderWeekly(); closeModal('modal-weekly');
 }
 
-function renderHomeCheckins(){
-  const items=state.checkins.filter(c=>!c.done).slice(0,5);
-  document.getElementById('home-checkins').innerHTML=items.length?items.map(c=>`
-    <div class="home-rem-item">
-      <div class="home-rem-dot" style="background:${ciColor(c.date)}"></div>
-      <div class="home-rem-body">
-        <div class="home-rem-text">${c.type} · ${c.who}</div>
-        <div class="home-rem-meta">${c.date?fmtFull(c.date):''}</div>
-      </div>
-      <a href="${gcalLink(c.who,c.type,c.date,c.notes)}" target="_blank" class="btn-cal">
-        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1M1 7h14"/></svg>GCal
-      </a>
-    </div>`).join(''):'<div class="empty-state">No upcoming check-ins</div>';
+async function deleteWeekly(id) {
+  await sb.from('weekly_updates').delete().eq('id', id);
+  weeklyUpdates = weeklyUpdates.filter(u => u.id !== id);
+  renderWeekly();
 }
 
-// ── REMINDERS PAGE ──
-function renderReminders(){
-  const open=state.reminders.filter(r=>!r.done);
-  const done=state.reminders.filter(r=>r.done);
-  const catColor=cat=>({'Follow-up':'var(--blue)','Internal':'var(--purple)','Coordinator':'var(--teal)','Manager':'var(--amber)','Leadership':'var(--amber)','Process':'var(--green)'}[cat]||'var(--text3)');
-  document.getElementById('reminders-open').innerHTML=open.length?open.map(r=>`
-    <div class="reminder-item">
-      <div class="rem-cb ${r.done?'done':''}" onclick="toggleReminder(${r.id})"></div>
-      <div class="rem-body">
-        <div class="rem-text">${r.text}</div>
-        <div class="rem-meta"><span style="color:${catColor(r.cat)};font-weight:500">${r.cat}</span>${r.due?` · <span class="${isOverdue(r.due)?'rem-overdue':''}">Due ${fmtShort(r.due)}</span>`:''}</div>
-      </div>
-      <button class="btn-ghost" style="color:var(--red-text)" onclick="deleteReminder(${r.id})">×</button>
-    </div>`).join(''):'<div class="empty-state">No open reminders 🎉</div>';
-  document.getElementById('reminders-done').innerHTML=done.length?done.map(r=>`
-    <div class="reminder-item" style="opacity:.5">
-      <div class="rem-cb done" onclick="toggleReminder(${r.id})"></div>
-      <div class="rem-body"><div class="rem-text done">${r.text}</div><div class="rem-meta">${r.cat}</div></div>
-      <button class="btn-ghost" style="color:var(--red-text)" onclick="deleteReminder(${r.id})">×</button>
-    </div>`).join(''):'<div class="empty-state">Nothing completed yet</div>';
+function populateWeeklyProjectSelect() {
+  document.getElementById('wu-project').innerHTML = projects.map(p=>'<option value="'+p.name+'">'+p.name+'</option>').join('');
 }
 
-// ── CHECK-INS PAGE ──
-function renderCheckins(){
-  const up=state.checkins.filter(c=>!c.done);
-  const dn=state.checkins.filter(c=>c.done);
-  document.getElementById('checkins-upcoming').innerHTML=up.length?up.map(c=>`
-    <div class="ci-list-item">
-      <div class="ci-list-dot" style="background:${ciColor(c.date)}"></div>
-      <div class="ci-list-body">
-        <div class="ci-list-title">${c.type} · ${c.who}</div>
-        <div class="ci-list-meta">${c.date?fmtFull(c.date):'No date'}${c.notes?' · '+c.notes:''}</div>
-        <div class="ci-list-actions">
-          <button class="btn-icon" onclick="markCheckinDone(${c.id})">Mark done</button>
-          <a href="${gcalLink(c.who,c.type,c.date,c.notes)}" target="_blank" class="btn-cal">
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1M1 7h14"/></svg>Add to Google Calendar
-          </a>
-          <button class="btn-icon" style="color:var(--red-text)" onclick="deleteCheckin(${c.id})">Remove</button>
-        </div>
-      </div>
-    </div>`).join(''):'<div class="empty-state">No upcoming check-ins</div>';
-  document.getElementById('checkins-done').innerHTML=dn.length?dn.map(c=>`
-    <div class="ci-list-item" style="opacity:.5">
-      <div class="ci-list-dot" style="background:var(--green)"></div>
-      <div class="ci-list-body">
-        <div class="ci-list-title" style="text-decoration:line-through">${c.type} · ${c.who}</div>
-        <div class="ci-list-meta">${c.date?fmtFull(c.date):''}</div>
-        <div class="ci-list-actions"><button class="btn-icon" style="color:var(--red-text)" onclick="deleteCheckin(${c.id})">Remove</button></div>
-      </div>
-    </div>`).join(''):'<div class="empty-state">No completed check-ins yet</div>';
+// ── 1-ON-1s (localStorage — personal to you) ──
+function renderOneones() {
+  const upcoming = oneones.filter(o=>!o.done).sort((a,b)=>a.date.localeCompare(b.date));
+  const done = oneones.filter(o=>o.done);
+  const renderItem = (o, isDone) => '<div class="oneon-item"><div class="oneon-dot" style="background:'+(isOverdue(o.date)&&!isDone?'var(--red)':'var(--blue)')+'"></div><div class="oneon-body"><div class="oneon-title">'+o.type+' — '+o.who+'</div><div class="oneon-meta">'+fmtShort(o.date)+(isOverdue(o.date)&&!isDone?' &middot; <span style="color:var(--red-text)">Overdue</span>':'')+'</div>'+(o.notes?'<div class="oneon-notes">'+o.notes+'</div>':'')+'<div class="oneon-actions">'+(!isDone?'<button class="btn-icon" onclick="markOneonDone('+o.id+')">&#10003; Done</button>':'')+'<button class="btn-icon" onclick="deleteOneon('+o.id+')">Delete</button></div></div></div>';
+  document.getElementById('oneones-upcoming').innerHTML = upcoming.length ? upcoming.map(o=>renderItem(o,false)).join('') : '<div class="empty-state">No upcoming 1-on-1s.</div>';
+  document.getElementById('oneones-done').innerHTML = done.length ? done.map(o=>renderItem(o,true)).join('') : '<div class="empty-state">No completed 1-on-1s.</div>';
 }
 
-// ── ACTIONS ──
-function addReminder(){
-  const text=document.getElementById('rem-text').value.trim();if(!text)return;
-  state.reminders.unshift({id:Date.now(),text,due:document.getElementById('rem-due').value,cat:document.getElementById('rem-cat').value,done:false});
-  save();renderAll();closeModal('modal-reminder');
-  document.getElementById('rem-text').value='';document.getElementById('rem-due').value='';
+function saveOneones() { localStorage.setItem('cmd_oneones', JSON.stringify(oneones)); }
+function addOneon() {
+  const who = document.getElementById('oo-who').value.trim(); if (!who) return;
+  const type = document.getElementById('oo-type').value;
+  const date = document.getElementById('oo-date').value;
+  const notes = document.getElementById('oo-notes').value.trim();
+  oneones.push({id:Date.now(),who,type,date,notes,done:false});
+  document.getElementById('oo-who').value=''; document.getElementById('oo-date').value=''; document.getElementById('oo-notes').value='';
+  saveOneones(); renderOneones(); closeModal('modal-oneon');
 }
-function toggleReminder(id){const r=state.reminders.find(x=>x.id===id);if(r){r.done=!r.done;save();renderAll();}}
-function deleteReminder(id){state.reminders=state.reminders.filter(x=>x.id!==id);save();renderAll();}
+function markOneonDone(id) { const o=oneones.find(x=>x.id===id); if(o){o.done=true;saveOneones();renderOneones();} }
+function deleteOneon(id) { oneones=oneones.filter(x=>x.id!==id); saveOneones(); renderOneones(); }
 
-function addCheckin(){
-  const who=document.getElementById('ci-who').value;
-  const type=document.getElementById('ci-type').value;
-  const date=document.getElementById('ci-date').value;
-  const notes=document.getElementById('ci-notes').value.trim();
-  const newCI={id:Date.now(),who,type,date,notes,done:false};
-  state.checkins.unshift(newCI);
-  // attach to manager or coordinator
-  const mgr=state.managers.find(x=>x.name===who);
-  if(mgr){if(!mgr.checkins)mgr.checkins=[];mgr.checkins.unshift({...newCI});}
-  const coord=state.coords.find(x=>x.name===who);
-  if(coord){if(!coord.checkins)coord.checkins=[];coord.checkins.unshift({...newCI});}
-  save();renderAll();closeModal('modal-checkin');
-  document.getElementById('ci-date').value='';document.getElementById('ci-notes').value='';
-}
-function markCheckinDone(id){const c=state.checkins.find(x=>x.id===id);if(c){c.done=true;save();renderCheckins();renderHomeCheckins();renderMetrics();}}
-function deleteCheckin(id){state.checkins=state.checkins.filter(x=>x.id!==id);save();renderCheckins();renderHomeCheckins();renderMetrics();}
-
-// Manager panel actions
-function saveMgrNotes(id,t){const m=state.managers.find(x=>x.id===id);if(m){m.notes=t;save();}}
-function saveMgrCultureNote(id,t){const m=state.managers.find(x=>x.id===id);if(m){m.cultureNote=t;save();}}
-function setMgrMood(id,mood){const m=state.managers.find(x=>x.id===id);if(!m)return;m.cultureMood=m.cultureMood===mood?'':mood;save();renderMgrPanel();}
-function saveMgrCiNote(mid,ciid,t){const m=state.managers.find(x=>x.id===mid);if(!m)return;const ci=m.checkins.find(x=>x.id===ciid);if(ci){ci.notes=t;save();}}
-function markMgrCiDone(mid,ciid){const m=state.managers.find(x=>x.id===mid);if(!m)return;const ci=m.checkins.find(x=>x.id===ciid);if(ci){ci.done=true;save();renderMgrPanel();}}
-function deleteMgrCi(mid,ciid){const m=state.managers.find(x=>x.id===mid);if(!m)return;m.checkins=m.checkins.filter(x=>x.id!==ciid);save();renderMgrPanel();}
-function saveMgrDR(id,text){
-  const m=state.managers.find(x=>x.id===id);if(!m)return;
-  m.directReports=text.split(',').map(s=>s.trim()).filter(Boolean);
-  save();renderMgrPanel();
-}
-
-// Coord panel actions
-function saveCoordNotes(id,t){const c=state.coords.find(x=>x.id===id);if(c){c.notes=t;save();}}
-function saveCoordCultureNote(id,t){const c=state.coords.find(x=>x.id===id);if(c){c.cultureNote=t;save();}}
-function setCoordMood(id,mood){const c=state.coords.find(x=>x.id===id);if(!c)return;c.cultureMood=c.cultureMood===mood?'':mood;save();renderCoordPanel();renderHomeCoordGrid();}
-function saveCoordCiNote(cid,ciid,t){const c=state.coords.find(x=>x.id===cid);if(!c)return;const ci=c.checkins.find(x=>x.id===ciid);if(ci){ci.notes=t;save();}}
-function markCoordCiDone(cid,ciid){const c=state.coords.find(x=>x.id===cid);if(!c)return;const ci=c.checkins.find(x=>x.id===ciid);if(ci){ci.done=true;save();renderCoordPanel();}}
-function deleteCoordCi(cid,ciid){const c=state.coords.find(x=>x.id===cid);if(!c)return;c.checkins=c.checkins.filter(x=>x.id!==ciid);save();renderCoordPanel();}
-function saveProjNote(type,eid,pid,t){
-  const list=type==='coord'?state.coords:[];
-  const e=list.find(x=>x.id===eid);if(!e)return;
-  const p=e.projects.find(x=>x.id===pid);if(p){p.notes=t;save();}
-}
-
-function openAddCiForPerson(id,type){
-  const entity=type==='manager'?state.managers.find(x=>x.id===id):state.coords.find(x=>x.id===id);
-  if(entity) document.getElementById('ci-who').value=entity.name;
-  openModal('modal-checkin');
-}
-
-function openAddProj(type,eid){
-  document.getElementById('modal-proj-title').textContent='Add project';
-  document.getElementById('pr-name').value='';
-  document.getElementById('pr-stage').value='Prepped';
-  document.getElementById('pr-notes').value='';
-  document.getElementById('pr-entity-type').value=type;
-  document.getElementById('pr-entity-id').value=eid;
-  document.getElementById('pr-edit-id').value='';
-  openModal('modal-proj');
-}
-function openEditProj(type,eid,pid){
-  const list=type==='coord'?state.coords:[];
-  const e=list.find(x=>x.id===eid);if(!e)return;
-  const p=e.projects.find(x=>x.id===pid);if(!p)return;
-  document.getElementById('modal-proj-title').textContent='Edit project';
-  document.getElementById('pr-name').value=p.name;
-  document.getElementById('pr-stage').value=p.stage;
-  document.getElementById('pr-notes').value=p.notes||'';
-  document.getElementById('pr-entity-type').value=type;
-  document.getElementById('pr-entity-id').value=eid;
-  document.getElementById('pr-edit-id').value=pid;
-  openModal('modal-proj');
-}
-function saveProject(){
-  const type=document.getElementById('pr-entity-type').value;
-  const eid=document.getElementById('pr-entity-id').value;
-  const pid=document.getElementById('pr-edit-id').value;
-  const name=document.getElementById('pr-name').value.trim();if(!name)return;
-  const stage=document.getElementById('pr-stage').value;
-  const notes=document.getElementById('pr-notes').value.trim();
-  const list=type==='coord'?state.coords:[];
-  const e=list.find(x=>x.id===eid);if(!e)return;
-  if(pid){const p=e.projects.find(x=>x.id===parseInt(pid));if(p){p.name=name;p.stage=stage;p.notes=notes;}}
-  else{if(!e.projects)e.projects=[];e.projects.unshift({id:Date.now(),name,stage,notes});}
-  save();renderCoordPanel();renderHomeCoordGrid();renderMetrics();closeModal('modal-proj');
-}
-function deleteProj(type,eid,pid){
-  const list=type==='coord'?state.coords:[];
-  const e=list.find(x=>x.id===eid);if(!e)return;
-  e.projects=e.projects.filter(x=>x.id!==pid);
-  save();renderCoordPanel();renderHomeCoordGrid();renderMetrics();
-}
-
-function addCoord(){
-  const name=document.getElementById('nc-name').value.trim();if(!name)return;
-  const region=document.getElementById('nc-region').value.trim();
-  state.coords.push({id:'c'+Date.now(),name,region,ci:state.coords.length%PAL.length,cultureMood:'',cultureNote:'',notes:'',projects:[],checkins:[]});
-  save();populateSelects();renderAll();closeModal('modal-addcoord');
-  document.getElementById('nc-name').value='';document.getElementById('nc-region').value='';
-}
-
-function saveSettings(){
-  const name=document.getElementById('s-name').value.trim();
-  const role=document.getElementById('s-role').value.trim();
-  if(name)state.userName=name;if(role)state.userRole=role;
-  document.getElementById('logo-sub').textContent=state.userRole;save();
-}
-
-// ── RENDER ALL ──
-function renderAll(){
-  renderMetrics();renderHomeCoordGrid();renderHomeReminders();renderHomeCheckins();
-  renderMgrTabs();renderMgrPanel();
-  renderCoordTabs();renderCoordPanel();
-  renderReminders();renderCheckins();
-}
-
-// ── NAV ──
-function showPage(id,btn){
+// ── NAV & MODALS ──
+function showPage(id, btn) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  if(btn)btn.classList.add('active');
+  if (btn) btn.classList.add('active');
 }
-
-// ── MODALS ──
-function openModal(id){populateSelects();document.getElementById(id).classList.add('open');}
-function closeModal(id){document.getElementById(id).classList.remove('open');}
+function openModal(id) { if(id==='modal-weekly')populateWeeklyProjectSelect(); document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 
 // ── INIT ──
-document.addEventListener('DOMContentLoaded',()=>{
-  load();
-  const now=new Date();
-  document.getElementById('home-greeting').textContent=greeting();
-  document.getElementById('home-date').textContent=now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
-  document.getElementById('footer-date').textContent=now.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-  document.getElementById('s-name').value=state.userName||'';
-  document.getElementById('s-role').value=state.userRole||'';
-  populateSelects();
-  setTeamTab('coordinators');
-  renderAll();
+sb.auth.onAuthStateChange((event, session) => {
+  if (session?.user) {
+    const email = session.user.email || '';
+    if (!email.endsWith('@sidelineswap.com')) {
+      sb.auth.signOut();
+      showAuthError('Only @sidelineswap.com accounts are allowed.');
+      return;
+    }
+    showApp(session.user);
+  } else {
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
+  }
 });
 </script>
 </body>

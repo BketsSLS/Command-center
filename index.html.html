@@ -391,14 +391,23 @@ let openProjects = new Set();
 
 // ── AUTH ──
 async function signInWithGoogle() {
-  const { error } = await sb.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: window.location.href,
-      queryParams: { hd: 'sidelineswap.com' }
+  try {
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: 'https://command-center-rho-seven.vercel.app',
+        skipBrowserRedirect: false,
+        queryParams: { hd: 'sidelineswap.com' }
+      }
+    });
+    if (error) {
+      console.error('OAuth error:', error);
+      showAuthError('Sign in failed: ' + error.message);
     }
-  });
-  if (error) showAuthError(error.message);
+  } catch(e) {
+    console.error('Sign in exception:', e);
+    showAuthError('Sign in failed. Please try again.');
+  }
 }
 
 async function signOut() {
